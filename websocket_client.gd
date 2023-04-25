@@ -74,7 +74,7 @@ func set_heartbeat(period_secounds: float = 30.0, _message = {}) -> void:
 
 func connect_to_host(host_url: String) -> void:
 	_host_url = host_url
-	self.emit_signal("host_updated", _host_url)
+	self.host_updated.emit(_host_url)
 	
 	print("[WSCLIENT] connecting to host: ", _host_url)
 	if _web_socket.connect_to_url("{0}".format([host_url])) == OK:
@@ -120,7 +120,7 @@ func _connection_established(protocol: String) -> void:
 	print("[WSCLIENT] connection established! Selected protocol: %s" % [protocol])
 	
 	_web_socket_connected = true
-	self.emit_signal("connected")
+	self.connected.emit()
 	
 	if _web_socket_auto_connect:
 		_web_socket_connect_timer.stop()
@@ -146,13 +146,13 @@ func _data_received(data) -> void:
 				compression_data = Msgpck.decode(compression_data)['result']
 			dict['data'] = compression_data
 	
-	self.emit_signal("data_received", dict)
+	self.data_received.emit(dict)
 
 func _connection_closed(code: int, reason: String) -> void:
 	print("[WSCLIENT] connection closed with code %d, reason: %s. Was clean close: %s" % [code, reason, code != -1])
 	
 	_web_socket_connected = false
-	self.emit_signal("disconnected")
+	self.disconnected.emit()
 	
 	if _web_socket_auto_connect:
 		_web_socket_connect_timer.start()
