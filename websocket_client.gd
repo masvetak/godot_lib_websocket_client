@@ -14,6 +14,7 @@ signal data_received
 signal host_updated(host_url)
 
 var _web_socket: WebSocketPeer = null
+var _web_socket_data_serializer: DataSerializer = null
 var _web_socket_connected: bool = false
 
 var _web_socket_connect_timer: Timer = null
@@ -25,10 +26,47 @@ var _web_socket_heartbeat_set: bool = false
 var _host_url: String = ""
 
 # ------------------------------------------------------------------------------
+# Data serialization classes
+# ------------------------------------------------------------------------------
+
+class DataSerializer:
+	func serialize(_data: Dictionary):
+		pass
+	
+	func deserialize(_data: PackedByteArray):
+		pass
+
+class JSONDataSerializer extends DataSerializer:
+	func serialize(data: Dictionary):
+		return JSON.stringify(data).to_utf8_buffer()
+	
+	func deserialize(data: PackedByteArray):
+		return JSON.parse_string(data.get_string_from_utf8())
+
+class MsgpckDataSerializer extends DataSerializer:
+	func serialize(data: Dictionary):
+		var encode_result = Msgpck.encode(data)
+		if encode_result.error == OK:
+			return encode_result.get('result')
+		else:
+			print("[MsgpckDataSerializer] Msgpck encode error with code: %d, reason: %s" % [encode_result.error, encode_result.error_string])
+			return null
+	
+	func deserialize(data: PackedByteArray):
+		var decode_result = Msgpck.decode(data)
+		if decode_result.error == OK:
+			return decode_result.get('result')
+		else:
+			print("[MsgpckDataSerializer] Msgpck decode error with code: %d, reason: %s" % [decode_result.error, decode_result.error_string])
+			return null
+
+# ------------------------------------------------------------------------------
 # Build-in methods
 # ------------------------------------------------------------------------------
 
-func _init() -> void:
+func _init(web_socket_data_serializer) -> void:
+	self.set_process(false)
+	_web_socket_data_serializer = web_socket_data_serializer
 	_web_socket = WebSocketPeer.new()
 
 func _process(_delta: float):
@@ -91,18 +129,13 @@ func send(data: Dictionary) -> bool:
 	if not _web_socket_connected:
 		return false
 	
-# JSON
-#	var query = JSON.print(data)
-#	var result = _web_socket.get_peer(1).put_packet(query.to_utf8())
-	
-# Msgpck
-	var result = Msgpck.encode(data)
-	if result.error != OK:
-		print("[WSCLIENT] Msgpck error with code: %d, reason: %s" % [result.error, result.error_string])
+	# Data serialization
+	var serialized_data = _web_socket_data_serializer.serialize(data)
+	if serialized_data == null:
 		return false
 	
-# Send
-	var error = _web_socket.send(result.get('result'))
+	# Send
+	var error = _web_socket.send(serialized_data)
 	if error != OK:
 		print("[WSCLIENT] Send error with code: %d" % [error])
 		return false
@@ -129,24 +162,22 @@ func _connection_established(protocol: String) -> void:
 		_web_socket_heartbeat_timer.start()
 
 func _data_received(data) -> void:
-# JSON
-#	var received_data = _web_socket.get_peer(1).get_packet().get_string_from_utf8()
-#	var dict: Dictionary = parse_json(received_data)
+	# Data deserialization
+	var result_data = _web_socket_data_serializer.deserialize(data)
+	if result_data == null:
+		return
 	
-# Msgpck
-	var dict: Dictionary = Msgpck.decode(data).get('result')
-	
-# Compression
-	if dict.has('mctx') and dict['mctx'].has('_mode_'):
-		var mode = dict['mctx']['_mode_']
+	# Data compression
+	if result_data.has('mctx') and result_data['mctx'].has('_mode_'):
+		var mode = result_data['mctx']['_mode_']
 		if mode.has('compression'):
-			var compression_data = dict['data']
+			var compression_data = result_data['data']
 			compression_data = compression_data.decompress(mode['size'], FileAccess.COMPRESSION_ZSTD)
 			if mode.has('packed') and mode['packed']:
 				compression_data = Msgpck.decode(compression_data)['result']
-			dict['data'] = compression_data
+			result_data['data'] = compression_data
 	
-	self.data_received.emit(dict)
+	self.data_received.emit(result_data)
 
 func _connection_closed(code: int, reason: String) -> void:
 	print("[WSCLIENT] connection closed with code %d, reason: %s. Was clean close: %s" % [code, reason, code != -1])
