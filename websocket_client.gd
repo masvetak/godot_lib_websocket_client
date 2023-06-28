@@ -65,9 +65,11 @@ class MsgpckDataSerializer extends DataSerializer:
 # ------------------------------------------------------------------------------
 
 func _init(web_socket_data_serializer) -> void:
-	self.set_process(false)
 	_web_socket_data_serializer = web_socket_data_serializer
 	_web_socket = WebSocketPeer.new()
+
+func _ready() -> void:
+	self.set_process(false)
 
 func _process(_delta: float):
 	_web_socket.poll()
