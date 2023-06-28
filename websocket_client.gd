@@ -22,6 +22,7 @@ var _web_socket_auto_connect: bool = false
 
 var _web_socket_heartbeat_timer: Timer = null
 var _web_socket_heartbeat_set: bool = false
+var _web_socket_heartbeat_message: Dictionary = {}
 
 var _host_url: String = ""
 
@@ -103,11 +104,12 @@ func set_auto_connect(wait_time_secounds: float = 5.0) -> void:
 	
 	self.add_child(_web_socket_connect_timer)
 
-func set_heartbeat(period_secounds: float = 30.0, _message = {}) -> void:
+func set_heartbeat(period_secounds: float = 30.0, message = {}) -> void:
 	_web_socket_heartbeat_timer = Timer.new()
 	_web_socket_heartbeat_timer.wait_time = period_secounds
 	
 	_web_socket_heartbeat_set = true
+	_web_socket_heartbeat_message = message
 	var _err = _web_socket_heartbeat_timer.timeout.connect(_on_web_socket_heartbeat_timer_timeout)
 	
 	self.add_child(_web_socket_heartbeat_timer)
@@ -201,4 +203,4 @@ func _on_web_socket_connect_timer_timeout() -> void:
 
 func _on_web_socket_heartbeat_timer_timeout() -> void:
 	print("[WSCLIENT] heartbeat send!")
-	var _err = self.send({})
+	var _err = self.send(_web_socket_heartbeat_message)
