@@ -5,8 +5,7 @@
 # @version     0.1.0
 # ------------------------------------------------------------------------------
 
-class_name WSClient
-extends Node
+class_name WSClient extends Node
 
 signal connected
 signal disconnected
