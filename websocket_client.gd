@@ -17,7 +17,7 @@ var _web_socket_data_serializer: DataSerializer = null
 var _web_socket_connected: bool = false
 
 var _web_socket_connect_timer: Timer = null
-var _web_socket_auto_connect: bool = false
+var _web_socket_auto_connect_set: bool = false
 
 var _web_socket_heartbeat_timer: Timer = null
 var _web_socket_heartbeat_set: bool = false
@@ -98,7 +98,7 @@ func set_auto_connect(wait_time_secounds: float = 5.0) -> void:
 	_web_socket_connect_timer = Timer.new()
 	_web_socket_connect_timer.wait_time = wait_time_secounds
 	
-	_web_socket_auto_connect = true
+	_web_socket_auto_connect_set = true
 	var _err = _web_socket_connect_timer.timeout.connect(_on_web_socket_connect_timer_timeout)
 	
 	self.add_child(_web_socket_connect_timer)
@@ -123,7 +123,9 @@ func connect_to_host(host_url: String) -> void:
 
 func disconnect_from_host() -> void:
 	print("[WSCLIENT] disconnecting from host: ", _host_url)
-	_web_socket.disconnect_from_host()
+	_web_socket_auto_connect_set = false
+	_web_socket_heartbeat_set = false
+	_web_socket.close()
 
 func get_connected() -> bool:
 	return _web_socket_connected
@@ -158,7 +160,7 @@ func _connection_established(protocol: String) -> void:
 	_web_socket_connected = true
 	self.connected.emit()
 	
-	if _web_socket_auto_connect:
+	if _web_socket_auto_connect_set:
 		_web_socket_connect_timer.stop()
 	
 	if _web_socket_heartbeat_set:
@@ -170,7 +172,7 @@ func _data_received(data) -> void:
 	if result_data == null:
 		return
 	
-	# Data compression
+	# Data decompression
 	if result_data.has('mctx') and result_data['mctx'].has('_mode_'):
 		var mode = result_data['mctx']['_mode_']
 		if mode.has('compression'):
@@ -188,7 +190,7 @@ func _connection_closed(code: int, reason: String) -> void:
 	_web_socket_connected = false
 	self.disconnected.emit()
 	
-	if _web_socket_auto_connect:
+	if _web_socket_auto_connect_set:
 		_web_socket_connect_timer.start()
 	
 	if _web_socket_heartbeat_set:
