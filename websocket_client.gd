@@ -36,30 +36,6 @@ class DataSerializer:
 	func deserialize(_data: PackedByteArray):
 		pass
 
-class JSONDataSerializer extends DataSerializer:
-	func serialize(data: Dictionary):
-		return JSON.stringify(data).to_utf8_buffer()
-	
-	func deserialize(data: PackedByteArray):
-		return JSON.parse_string(data.get_string_from_utf8())
-
-class MsgpckDataSerializer extends DataSerializer:
-	func serialize(data: Dictionary):
-		var encode_result = Msgpck.encode(data)
-		if encode_result.error == OK:
-			return encode_result.get('result')
-		else:
-			print("[MsgpckDataSerializer] Msgpck encode error with code: %d, reason: %s" % [encode_result.error, encode_result.error_string])
-			return null
-	
-	func deserialize(data: PackedByteArray):
-		var decode_result = Msgpck.decode(data)
-		if decode_result.error == OK:
-			return decode_result.get('result')
-		else:
-			print("[MsgpckDataSerializer] Msgpck decode error with code: %d, reason: %s" % [decode_result.error, decode_result.error_string])
-			return null
-
 # ------------------------------------------------------------------------------
 # Build-in methods
 # ------------------------------------------------------------------------------
