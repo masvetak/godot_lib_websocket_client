@@ -148,16 +148,6 @@ func _data_received(data) -> void:
 	if result_data == null:
 		return
 	
-	# Data decompression
-	if result_data.has('mctx') and result_data['mctx'].has('_mode_'):
-		var mode = result_data['mctx']['_mode_']
-		if mode.has('compression'):
-			var compression_data = result_data['data']
-			compression_data = compression_data.decompress(mode['size'], FileAccess.COMPRESSION_ZSTD)
-			if mode.has('packed') and mode['packed']:
-				compression_data = Msgpck.decode(compression_data)['result']
-			result_data['data'] = compression_data
-	
 	self.data_received.emit(result_data)
 
 func _connection_closed(code: int, reason: String) -> void:
