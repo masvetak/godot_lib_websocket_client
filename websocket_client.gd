@@ -169,5 +169,4 @@ func _on_web_socket_connect_timer_timeout() -> void:
 	connect_to_host(_host_url)
 
 func _on_web_socket_heartbeat_timer_timeout() -> void:
-	print("[WSCLIENT] heartbeat send!")
 	var _err = self.send(_web_socket_heartbeat_message)
